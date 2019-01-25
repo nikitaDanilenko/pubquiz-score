@@ -1,7 +1,20 @@
 import           Data.List (intercalate)
 
-type Points = [Float]
+data RoundRating = RoundRating { roundNumber :: Int, ownPoints :: Double, maxReached :: Double, reachablePoints :: Double }
+
+data Points = Points { roundRatings :: [RoundRating] }
+
+type GroupRating = (GroupKey, Double)
+
 data Group = Group { no :: Int, code :: String, points :: Points }
+
+data Column = Column { roundNumber :: Int, reachablePoints :: Int, groupRatings :: [GroupRating] }
+
+data GroupKey = GroupKey { number :: Int, code :: String }
+{-
+mkGroups :: [Column] -> [Group]
+mkGroups cs = undefined where
+  maxReached = -}
 
 group1 :: Group
 group1 = Group 1 "sdig1o" [4,6,2,9,3,1.5]
