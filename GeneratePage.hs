@@ -1,7 +1,7 @@
 import Control.Arrow ( second )
 import Data.Function ( on )
 import Data.List     ( intercalate, maximumBy )
-import Data.Map      ( Map, fromList )
+import Data.Map      ( Map, fromList, unionsWith, toList )
 import Data.Ord      ( comparing )
 
 data RoundRating = RoundRating { 
@@ -11,11 +11,16 @@ data RoundRating = RoundRating {
   ownPoints :: Double
 }
 
-data Points = Points { roundRatings :: [RoundRating] }
+type Points = [RoundRating]
+
+type SimplePoints = [Double]
 
 type GroupRating = (GroupKey, Double)
 
 data Group = Group { groupKey :: GroupKey, points :: Points }
+
+simplePoints :: Group -> SimplePoints
+simplePoints = map ownPoints . points
 
 group :: Int -> String -> Points -> Group
 group n code = Group (GroupKey n code)
@@ -34,17 +39,16 @@ instance Ord GroupKey where
 maxInRound :: Round -> Double
 maxInRound = snd . maximumBy (comparing snd) . groupRatings
 
-roundRating :: Round -> Map GroupKey RoundRating
+roundRating :: Round -> Map GroupKey Points
 roundRating round = fromList ratings where
   n = number round
   reachable = possible round
   maxReached = maxInRound round
   gs = groupRatings round
-  ratings = map (second (RoundRating n maxReached reachable)) gs
+  ratings = map (second (pure . RoundRating n maxReached reachable)) gs
  
-
 mkGroups :: [Round] -> [Group]
-mkGroups rs = undefined where
+mkGroups = map (uncurry Group) . toList . unionsWith (++) . map roundRating
   
 
 {-group1 :: Group
@@ -74,9 +78,9 @@ group8 = group 8 "weu429" [8.5,5,3.5,1,5,4]
 group9 :: Group
 group9 = group 9 "8fwr7h" [3,7,4,1,8,2]-}
 
-{-writePointPages :: [Group] -> IO ()
+writePointPages :: [Group] -> IO ()
 writePointPages xs =
-  mapM_ (\group -> writeFile (code group ++ ".html")
+  mapM_ (\group -> writeFile (code (groupKey group) ++ ".html")
         (pointPage (points group)))
         xs
 
@@ -91,10 +95,19 @@ pointPage points =
   "<html><head><title>PubQuiz: Punktezahl</title>" ++
   "<link rel='stylesheet' type='text/css' href='style.css'/>"++
   "</head><body><div><center><h1>" ++
-  show (sum points) ++
+  mkTable points ++
   "</h1></center></div></body></html>"
 
-colors = [ "rgb(255, 99, 132)"
+mkTable :: Points -> String
+mkTable = undefined
+
+type Color = String
+
+mkColor :: Int -> Int -> Int -> Color
+mkColor red green blue = "rgb(" ++ intercalate "," (map show [red, green, blue]) ++ ")"
+
+colors :: [String]
+colors = cycle [ "rgb(255, 99, 132)"
          , "rgb(255, 159, 64)"
          , "rgb(255, 205, 86)"
          , "rgb(75, 192, 192)"
@@ -104,19 +117,22 @@ colors = [ "rgb(255, 99, 132)"
          , "rgb(44, 34, 73)"
          , "rgb(142, 64, 255)"]
 
+rounds :: [String]
 rounds = map (("Runde " ++) . show) [(1::Int)..]
 
+toDataset :: Group -> String -> String
 toDataset g c =
-  "{" ++ "label: '" ++ show (no g) ++ "'" ++
+  "{" ++ "label: '" ++ show (groupNumber (groupKey g)) ++ "'" ++
   "," ++ "borderColor: " ++ show c ++
   "," ++ "backgroundColor: " ++ show c ++
   "," ++ "fill: " ++ "false" ++
   "," ++ "data: [" ++ intercalate ","
                             (zipWith (\x y -> "{ x: '" ++ x ++ "' , y: '" ++ show y ++ "'}")
                                      rounds
-                                     (tail (scanl (+) 0 (points g)))) ++
+                                     (tail (scanl (+) 0 (simplePoints g)))) ++
   "] ," ++ "yAxisID: 'y-axis-1'}"
 
+graphPage :: [Group] -> [Color] -> String
 graphPage groups colors =
   "<html>\
   \<head><title>Pubquiz</title>\
@@ -164,4 +180,4 @@ groups = undefined --[group1,group2,group3,group4,group5,group6,group7,group8,gr
 main :: IO ()
 main = do
   writePointPages groups
-  writeGraphPage groups colors-}
+  writeGraphPage groups colors
