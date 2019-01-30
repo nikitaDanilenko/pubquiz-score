@@ -1,8 +1,10 @@
-import Control.Arrow ( second )
-import Data.Function ( on )
-import Data.List     ( intercalate, maximumBy )
-import Data.Map      ( Map, fromList, unionsWith, toList )
-import Data.Ord      ( comparing )
+import Control.Arrow          ( second )
+import Control.Exception      ( catch )
+import Control.Exception.Base ( IOException )
+import Data.Function          ( on )
+import Data.List              ( intercalate, maximumBy )
+import Data.Map               ( Map, fromList, unionsWith, toList )
+import Data.Ord               ( comparing )
 
 data RoundRating = RoundRating { 
   roundNumber :: Int, 
@@ -25,7 +27,7 @@ simplePoints = map ownPoints . points
 group :: Int -> String -> Points -> Group
 group n code = Group (GroupKey n code)
 
-data Round = Round { number :: Int, possible :: Double, groupRatings :: [GroupRating] }
+data Round = Round { name :: String, number :: Int, possible :: Double, groupRatings :: [GroupRating] }
 
 data GroupKey = GroupKey { groupNumber :: Int, code :: String }
 
@@ -78,35 +80,70 @@ group8 = group 8 "weu429" [8.5,5,3.5,1,5,4]
 group9 :: Group
 group9 = group 9 "8fwr7h" [3,7,4,1,8,2]-}
 
-writePointPages :: [Group] -> IO ()
-writePointPages xs =
+writePointPages :: Labels -> [Group] -> IO ()
+writePointPages labels =
   mapM_ (\group -> writeFile (code (groupKey group) ++ ".html")
-        (pointPage (points group)))
-        xs
+        (pointPage labels (points group)))
 
 writeGraphPage :: [Group] -> [String] -> IO ()
 writeGraphPage groups colors =
   writeFile "index.html"
             (graphPage groups colors)
 
-pointPage :: Points -> String
-pointPage points =
+data Labels = Labels { 
+  roundLabel :: String, 
+  ownPointsLabel :: String, 
+  maxReachedLabel :: String,
+  maxReachableLabel :: String
+} deriving (Show, Read)
+
+pointPage :: Labels -> Points -> String
+pointPage labels points =
   "<!DOCTYPE HTML PUBLIC \"-//IETF//DTD HTML//EN\">\n" ++
   "<html><head><title>PubQuiz: Punktezahl</title>" ++
   "<link rel='stylesheet' type='text/css' href='style.css'/>"++
-  "</head><body><div><center><h1>" ++
-  mkTable points ++
-  "</h1></center></div></body></html>"
+  "</head><body><div><center>" ++
+  mkTable labels points ++
+  "</center></div></body></html>"
 
-mkTable :: Points -> String
-mkTable = undefined
+tableCell :: String -> String
+tableCell text = concat ["<td>", text, "</td>"]
+
+tableRow :: String -> String
+tableRow text = concat ["<tr>", text, "</tr>\n"]
+
+headerCell :: String -> String
+headerCell text = concat ["<th>", text, "</th>"]
+
+mkTableLine :: RoundRating -> String
+mkTableLine rating =   
+  tableRow (concatMap (tableCell . show) [ownPoints rating, maxReached rating, reachablePoints rating])
+
+tableHeader :: Labels -> String
+tableHeader labels = 
+  tableRow (concatMap headerCell [
+    roundLabel labels, 
+    ownPointsLabel labels, 
+    maxReachedLabel labels, 
+    maxReachableLabel labels
+    ]
+  )
+
+mkTable :: Labels -> Points -> String
+mkTable labels points = 
+  concat [
+  "<table>\n", 
+  tableHeader labels, 
+  concatMap mkTableLine points,
+  "</table>"]
+
 
 type Color = String
 
 mkColor :: Int -> Int -> Int -> Color
 mkColor red green blue = "rgb(" ++ intercalate "," (map show [red, green, blue]) ++ ")"
 
-colors :: [String]
+colors :: [Color]
 colors = cycle [ "rgb(255, 99, 132)"
          , "rgb(255, 159, 64)"
          , "rgb(255, 205, 86)"
@@ -120,7 +157,7 @@ colors = cycle [ "rgb(255, 99, 132)"
 rounds :: [String]
 rounds = map (("Runde " ++) . show) [(1::Int)..]
 
-toDataset :: Group -> String -> String
+toDataset :: Group -> Color -> String
 toDataset g c =
   "{" ++ "label: '" ++ show (groupNumber (groupKey g)) ++ "'" ++
   "," ++ "borderColor: " ++ show c ++
@@ -131,6 +168,9 @@ toDataset g c =
                                      rounds
                                      (tail (scanl (+) 0 (simplePoints g)))) ++
   "] ," ++ "yAxisID: 'y-axis-1'}"
+
+roundList :: String -> Int -> String
+roundList roundName n = concat (zipWith (\r i -> unwords [r, show i]) (repeat roundName) [1 .. n])
 
 graphPage :: [Group] -> [Color] -> String
 graphPage groups colors =
@@ -177,7 +217,21 @@ graphPage groups colors =
 
 groups = undefined --[group1,group2,group3,group4,group5,group6,group7,group8,group9]
 
+defaultLabels :: Labels
+defaultLabels = Labels { 
+  roundLabel = "Runde", 
+  ownPointsLabel = "Erreichte Punkte", 
+  maxReachedLabel = "Erreichte Höchstpunktzahl",
+  maxReachableLabel = "Erreichbare Punkte"
+}
+
+readLabels :: IO Labels
+readLabels = fmap (read :: String -> Labels) (readFile "./labels.txt") `catch` handle where
+  handle :: IOException -> IO Labels
+  handle _ = putStrLn "labels.txt not found - using default labels." >> return defaultLabels
+
 main :: IO ()
 main = do
-  writePointPages groups
+  labels <- readLabels
+  writePointPages labels groups
   writeGraphPage groups colors
