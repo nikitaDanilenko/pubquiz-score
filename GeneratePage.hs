@@ -24,12 +24,15 @@ data Group = Group { groupKey :: GroupKey, points :: Points }
 simplePoints :: Group -> SimplePoints
 simplePoints = map ownPoints . points
 
-group :: Int -> String -> Points -> Group
-group n code = Group (GroupKey n code)
-
 data Round = Round { name :: String, number :: Int, possible :: Double, groupRatings :: [GroupRating] }
 
-data GroupKey = GroupKey { groupNumber :: Int, code :: String }
+fromIndex :: [Code] -> String -> Int -> Double -> [Double] -> Round
+fromIndex groupCodes name number possible points = Round name number possible ratings where
+  ratings = zipWith3 (\i c p -> (GroupKey i c, p)) [1 .. ] groupCodes points
+
+type Code = String
+
+data GroupKey = GroupKey { groupNumber :: Int, code :: Code }
 
 instance Eq GroupKey where
   (==) = (==) `on` groupNumber
@@ -51,34 +54,6 @@ roundRating round = fromList ratings where
  
 mkGroups :: [Round] -> [Group]
 mkGroups = map (uncurry Group) . toList . unionsWith (++) . map roundRating
-  
-
-{-group1 :: Group
-group1 = group 1 "sdig1o" [4,6,2,9,3,1.5]
-
-group2 :: Group
-group2 = group 2 "aikp25" [6,3,2,1,4,7]
-
-group3 :: Group
-group3 = group 3 "vzt35d" [1,6,3,9,8,2]
-
-group4 :: Group
-group4 = group 4 "fs7g5r" [5.5,4,3,2.5,1,5.5]
-
-group5 :: Group
-group5 = group 5 "9hf347" [8,3,1,5,5,6]
-
-group6 :: Group
-group6 = group 6 "f853q7" [5,4.5,8,1.5,6,3]
-
-group7 :: Group
-group7 = group 7 "pwi5q3" [7,3,7,1,4,8]
-
-group8 :: Group
-group8 = group 8 "weu429" [8.5,5,3.5,1,5,4]
-
-group9 :: Group
-group9 = group 9 "8fwr7h" [3,7,4,1,8,2]-}
 
 writePointPages :: Labels -> [Group] -> IO ()
 writePointPages labels =
@@ -96,6 +71,16 @@ data Labels = Labels {
   maxReachedLabel :: String,
   maxReachableLabel :: String
 } deriving (Show, Read)
+
+htmlSafeChar :: Char -> String
+htmlSafeChar 'ö' = "&ouml;"
+htmlSafeChar 'ä' = "&auml;"
+htmlSafeChar 'ü' = "&uuml;"
+htmlSafeChar 'ß' = "&szlig;"
+htmlSafeChar c = [c]
+
+htmlSafeString :: String -> String
+htmlSafeString = concatMap htmlSafeChar
 
 pointPage :: Labels -> Points -> String
 pointPage labels points =
@@ -117,7 +102,12 @@ headerCell text = concat ["<th>", text, "</th>"]
 
 mkTableLine :: RoundRating -> String
 mkTableLine rating =   
-  tableRow (concatMap (tableCell . show) [ownPoints rating, maxReached rating, reachablePoints rating])
+  tableRow (concatMap tableCell [
+    show (roundNumber rating), 
+    show (ownPoints rating), 
+    show (maxReached rating), 
+    show (reachablePoints rating)
+    ])
 
 tableHeader :: Labels -> String
 tableHeader labels = 
@@ -215,14 +205,12 @@ graphPage groups colors =
   \     tick: { min: '0', max: '50'} } ]\
   \ }}});};</script></body></html>"
 
-groups = undefined --[group1,group2,group3,group4,group5,group6,group7,group8,group9]
-
 defaultLabels :: Labels
 defaultLabels = Labels { 
-  roundLabel = "Runde", 
-  ownPointsLabel = "Erreichte Punkte", 
-  maxReachedLabel = "Erreichte Höchstpunktzahl",
-  maxReachableLabel = "Erreichbare Punkte"
+  roundLabel = htmlSafeString "Runde", 
+  ownPointsLabel = htmlSafeString "Erreichte Punkte", 
+  maxReachedLabel = htmlSafeString "Erreichte Höchstpunktzahl",
+  maxReachableLabel = htmlSafeString "Erreichbare Punkte"
 }
 
 readLabels :: IO Labels
@@ -230,8 +218,30 @@ readLabels = fmap (read :: String -> Labels) (readFile "./labels.txt") `catch` h
   handle :: IOException -> IO Labels
   handle _ = putStrLn "labels.txt not found - using default labels." >> return defaultLabels
 
+readPoints :: String -> (Double, [Double])
+readPoints [] = (0, [])
+readPoints text = (total, ps) where
+  (total : _ : ps) = map read (words text)
+
+parseCodesAndRounds :: String -> String -> ([String], [Round])
+parseCodesAndRounds _ [] = ([], [])
+parseCodesAndRounds roundName text = (codes, rounds) where
+  (l : ls) = lines text
+  codes = words l
+  points = map readPoints ls
+  indexedPoints = zip [1 ..] points
+  rounds = map (\(i, (total, ps)) -> fromIndex codes roundName i total ps) indexedPoints
+
+readCodesAndRounds :: String -> IO ([String], [Round])
+readCodesAndRounds roundLabel =
+  fmap (parseCodesAndRounds roundLabel) (readFile "rounds.txt") `catch` handle where
+    handle :: IOException -> IO ([String], [Round]) 
+    handle _ = putStrLn "Unexpected format or missing file. No output generated." >> return ([], [])
+
 main :: IO ()
 main = do
   labels <- readLabels
+  (codes, rounds) <- readCodesAndRounds (roundLabel labels)
+  let groups = mkGroups rounds
   writePointPages labels groups
   writeGraphPage groups colors
