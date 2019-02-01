@@ -1,4 +1,4 @@
-import Control.Arrow          ( second )
+import Control.Arrow          ( second, (&&&), (***), (>>>) )
 import Control.Exception      ( catch )
 import Control.Exception.Base ( IOException )
 import Data.Function          ( on )
@@ -14,6 +14,19 @@ data RoundRating = RoundRating {
 }
 
 type Points = [RoundRating]
+
+score :: Points -> (Double, Double)
+score points = 
+  foldr (\rating (o, r) -> ((ownPoints &&& reachablePoints) >>> ((+) *** (+)) >>> (($ o) *** ($ r))) rating) (0, 0) points
+
+mkSum :: Points -> String
+mkSum = score >>> uncurry (\own reachable -> concat [prettyDouble own, "/", prettyDouble reachable])
+
+prettyDouble :: Double -> String
+prettyDouble d = short where
+  int = round d :: Int
+  short | (fromIntegral int :: Double) == d = show int
+        | otherwise = show d
 
 type SimplePoints = [Double]
 
@@ -88,8 +101,12 @@ pointPage labels points =
   "<html><head><title>PubQuiz: Punktezahl</title>" ++
   "<link rel='stylesheet' type='text/css' href='style.css'/>"++
   "</head><body><div><center>" ++
+  h1 (mkSum points) ++
   mkTable labels points ++
   "</center></div></body></html>"
+
+h1 :: String -> String
+h1 text = concat ["<h1>", text, "</h1>"]
 
 tableCell :: String -> String
 tableCell text = concat ["<td>", text, "</td>"]
