@@ -121,9 +121,9 @@ mkTableLine :: RoundRating -> String
 mkTableLine rating =   
   tableRow (concatMap tableCell [
     show (roundNumber rating), 
-    show (ownPoints rating), 
-    show (maxReached rating), 
-    show (reachablePoints rating)
+    prettyDouble (ownPoints rating), 
+    prettyDouble (maxReached rating), 
+    prettyDouble (reachablePoints rating)
     ])
 
 tableHeader :: Labels -> String
