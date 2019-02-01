@@ -1,0 +1,1 @@
+Labels {roundLabel = "Runde", ownPointsLabel = "Erreichte Punkte", maxReachedLabel = "Erreichte H&ouml;chstpunktzahl", maxReachableLabel = "Erreichbare Punkte"}
