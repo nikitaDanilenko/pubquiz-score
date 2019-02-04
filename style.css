@@ -17,3 +17,22 @@ td, th {
 tr:nth-child(even) {
   background-color: #dddddd;
 }
+
+a.button {
+  -webkit-appearance: button;
+  -moz-appearance: button;
+  appearance: button;
+
+  padding-top: 15px;
+  padding-bottom: 15px;
+  padding-left: 15px;
+  padding-right: 15px;
+
+  border-radius: 5px;
+
+  background-color: rgb(70, 200, 40);
+
+  text-decoration: none;
+  font-family: arial, sans-serif;
+  color: #000000;
+}

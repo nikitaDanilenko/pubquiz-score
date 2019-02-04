@@ -82,7 +82,8 @@ data Labels = Labels {
   roundLabel :: String, 
   ownPointsLabel :: String, 
   maxReachedLabel :: String,
-  maxReachableLabel :: String
+  maxReachableLabel :: String,
+  backToChartView :: String
 } deriving (Show, Read)
 
 htmlSafeChar :: Char -> String
@@ -103,6 +104,7 @@ pointPage labels points =
   "</head><body><div><center>" ++
   h1 (mkSum points) ++
   mkTable labels points ++
+  mkButton (backToChartView labels) ++
   "</center></div></body></html>"
 
 h1 :: String -> String
@@ -144,6 +146,8 @@ mkTable labels points =
   concatMap mkTableLine points,
   "</table>"]
 
+mkButton :: String -> String
+mkButton text = concat ["<a href=\"./index.html\" class=\"button\">", text, "</a>"]
 
 type Color = String
 
@@ -227,7 +231,8 @@ defaultLabels = Labels {
   roundLabel = htmlSafeString "Runde", 
   ownPointsLabel = htmlSafeString "Erreichte Punkte", 
   maxReachedLabel = htmlSafeString "Erreichte Höchstpunktzahl",
-  maxReachableLabel = htmlSafeString "Erreichbare Punkte"
+  maxReachableLabel = htmlSafeString "Erreichbare Punkte",
+  backToChartView = htmlSafeString "Gesamtansicht"
 }
 
 readLabels :: IO Labels
