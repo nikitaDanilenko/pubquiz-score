@@ -73,17 +73,18 @@ writePointPages labels =
   mapM_ (\group -> writeFile (code (groupKey group) ++ ".html")
         (pointPage labels (points group)))
 
-writeGraphPage :: [Group] -> [String] -> IO ()
-writeGraphPage groups colors =
+writeGraphPage :: Labels -> Int -> [Group] -> [String] -> IO ()
+writeGraphPage labels rounds groups colors =
   writeFile "index.html"
-            (graphPage groups colors)
+            (graphPage labels rounds groups colors)
 
 data Labels = Labels { 
   roundLabel :: String, 
   ownPointsLabel :: String, 
   maxReachedLabel :: String,
   maxReachableLabel :: String,
-  backToChartView :: String
+  backToChartView :: String,
+  mainLabel :: String
 } deriving (Show, Read)
 
 htmlSafeChar :: Char -> String
@@ -96,16 +97,19 @@ htmlSafeChar c = [c]
 htmlSafeString :: String -> String
 htmlSafeString = concatMap htmlSafeChar
 
+centerDiv :: String -> String
+centerDiv text = concat ["<div><center>", text, "</center></div>"]
+
 pointPage :: Labels -> Points -> String
 pointPage labels points =
   "<!DOCTYPE HTML PUBLIC \"-//IETF//DTD HTML//EN\">\n" ++
   "<html><head><title>PubQuiz: Punktezahl</title>" ++
   "<link rel='stylesheet' type='text/css' href='style.css'/>"++
-  "</head><body><div><center>" ++
-  h1 (mkSum points) ++
-  mkTable labels points ++
-  mkButton (backToChartView labels) ++
-  "</center></div></body></html>"
+  "</head><body>"++
+  centerDiv (h1 (mkSum points)) ++
+  centerDiv (mkTable labels points) ++
+  centerDiv (mkButton (backToChartView labels)) ++
+  "</body></html>"
 
 h1 :: String -> String
 h1 text = concat ["<h1>", text, "</h1>"]
@@ -178,13 +182,16 @@ toDataset g c =
                             (zipWith (\x y -> "{ x: '" ++ x ++ "' , y: '" ++ show y ++ "'}")
                                      rounds
                                      (tail (scanl (+) 0 (simplePoints g)))) ++
-  "] ," ++ "yAxisID: 'y-axis-1'}"
+  "], " ++ 
+  "lineTension: 0, " ++
+  "yAxisID: 'y-axis-1'}"
 
 roundList :: String -> Int -> String
-roundList roundName n = concat (zipWith (\r i -> unwords [r, show i]) (repeat roundName) [1 .. n])
+roundList roundName n = 
+  intercalate "," (zipWith (\r i -> unwords ["'", r, show i, "'"]) (repeat roundName) [1 .. n])
 
-graphPage :: [Group] -> [Color] -> String
-graphPage groups colors =
+graphPage :: Labels -> Int -> [Group] -> [Color] -> String
+graphPage labels rounds groups colors =
   "<html>\
   \<head><title>Pubquiz</title>\
   \<script src='https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.3/Chart.bundle.min.js'></script>\
@@ -201,8 +208,11 @@ graphPage groups colors =
   \</div>\
   \<script>\
   \var lineChartData = {\
-  \    labels: ['Runde 1', 'Runde 2', 'Runde 3'\
-  \            ,'Runde 4', 'Runde 5', 'Runde 6'],\
+  \    labels: ["
+  ++ 
+  roundList (roundLabel labels) rounds
+  ++ 
+  "], \ 
   \    datasets:["
   ++
   intercalate "," (zipWith toDataset groups colors)
@@ -218,13 +228,20 @@ graphPage groups colors =
   \   stacked: false,\
   \   title: {\
   \     display: true,\
-  \     text: 'Chart.js Line Chart - Multi Axis'\
-  \ },\
+  \     text: '"
+  ++ 
+  mainLabel labels 
+  ++ 
+  "\'"
+  ++
+  " },\
   \ scales: {\
   \ yAxes: [\
   \   { type: 'linear', display: true, position: 'left', id: 'y-axis-1',\
   \     tick: { min: '0', max: '50'} } ]\
-  \ }}});};</script></body></html>"
+  \ }}});};</script>\
+  \ <div id = 'copyright'>Powered by <a href='https://www.chartjs.org'>Chart.js</a></div>\
+  \</body></html>"
 
 defaultLabels :: Labels
 defaultLabels = Labels { 
@@ -232,7 +249,8 @@ defaultLabels = Labels {
   ownPointsLabel = htmlSafeString "Erreichte Punkte", 
   maxReachedLabel = htmlSafeString "Erreichte Höchstpunktzahl",
   maxReachableLabel = htmlSafeString "Erreichbare Punkte",
-  backToChartView = htmlSafeString "Gesamtansicht"
+  backToChartView = htmlSafeString "Gesamtansicht",
+  mainLabel = htmlSafeString "Pubquiz"
 }
 
 readLabels :: IO Labels
@@ -265,5 +283,6 @@ main = do
   labels <- readLabels
   (codes, rounds) <- readCodesAndRounds (roundLabel labels)
   let groups = mkGroups rounds
+      n = length rounds
   writePointPages labels groups
-  writeGraphPage groups colors
+  writeGraphPage labels n groups colors
