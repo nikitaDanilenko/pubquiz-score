@@ -10,6 +10,8 @@ table {
   font-family: arial, sans-serif;
   border-collapse: collapse;
   width: 100%;
+
+  margin-bottom: 35px;
 }
 
 h1 {
@@ -48,4 +50,22 @@ a.button {
 
   text-decoration: none;
   font-family: arial, sans-serif;
+}
+
+#copyright {
+  padding-top: 15px;
+  text-decoration: none;
+  font-family: arial, sans-serif;
+  font-size: 8px;
+  text-align: right;
+
+  color: rgb(120, 120, 120);
+}
+
+#copyright a:link {
+  color: rgb(120, 120, 120);
+}
+
+#copyright a:visited {
+  color: rgb(80, 80, 80);
 }
