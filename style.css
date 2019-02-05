@@ -1,3 +1,11 @@
+body {
+  color: rgb(200, 200, 200);  
+}
+
+body {
+  background: rgb(40, 40, 40);
+}
+
 table {
   font-family: arial, sans-serif;
   border-collapse: collapse;
@@ -15,7 +23,12 @@ td, th {
 }
 
 tr:nth-child(even) {
-  background-color: #dddddd;
+  background-color: rgb(80, 80, 80);
+}
+
+tr:hover {
+  background-color: rgb(100, 100, 100);
+  color: rgb(180, 180, 180);
 }
 
 a.button {
@@ -30,9 +43,9 @@ a.button {
 
   border-radius: 5px;
 
+  color: rgb(250, 250, 250);
   background-color: rgb(70, 200, 40);
 
   text-decoration: none;
   font-family: arial, sans-serif;
-  color: #000000;
 }
