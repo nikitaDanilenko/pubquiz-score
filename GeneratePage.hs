@@ -112,16 +112,16 @@ pointPage labels points =
   "</body></html>"
 
 h1 :: String -> String
-h1 text = concat ["<h1>", text, "</h1>"]
+h1 = tagged "h1"
 
 tableCell :: String -> String
-tableCell text = concat ["<td>", text, "</td>"]
+tableCell = tagged "td"
 
 tableRow :: String -> String
-tableRow text = concat ["<tr>", text, "</tr>\n"]
+tableRow  = (++ "\n") . tagged "tr"
 
 headerCell :: String -> String
-headerCell text = concat ["<th>", text, "</th>"]
+headerCell = tagged "th"
 
 mkTableLine :: RoundRating -> String
 mkTableLine rating =   
@@ -145,50 +145,59 @@ tableHeader labels =
 mkTable :: Labels -> Points -> String
 mkTable labels points = 
   concat [
-  "<table>\n", 
+  openTable, 
   tableHeader labels, 
   concatMap mkTableLine points,
-  "</table>"]
+  closeTable] where
+    (openTable, closeTable) = tag "table"
+
+tag :: String -> (String, String)
+tag t = (concat ["<", t, ">"], concat ["</", t, ">"])
+
+tagged :: String -> String -> String
+tagged t text = concat [open, text, close] where
+  (open, close) = tag t
 
 mkButton :: String -> String
 mkButton text = concat ["<a href=\"./index.html\" class=\"button\">", text, "</a>"]
 
 type Color = String
 
-mkColor :: Int -> Int -> Int -> Color
-mkColor red green blue = "rgb(" ++ intercalate "," (map show [red, green, blue]) ++ ")"
+defaultColors :: [Color]
+defaultColors = cycle [ 
+  "rgb(255, 99, 132)"
+  , "rgb(255, 159, 64)"
+  , "rgb(255, 205, 86)"
+  , "rgb(75, 192, 192)"
+  , "rgb(54, 162, 235)"
+  , "rgb(153, 102, 255)"
+  , "rgb(201, 203, 207)"
+  , "rgb(44, 34, 73)"
+  , "rgb(142, 64, 255)"
+  ]
 
-colors :: [Color]
-colors = cycle [ "rgb(255, 99, 132)"
-         , "rgb(255, 159, 64)"
-         , "rgb(255, 205, 86)"
-         , "rgb(75, 192, 192)"
-         , "rgb(54, 162, 235)"
-         , "rgb(153, 102, 255)"
-         , "rgb(201, 203, 207)"
-         , "rgb(44, 34, 73)"
-         , "rgb(142, 64, 255)"]
-
-rounds :: [String]
-rounds = map (("Runde " ++) . show) [(1::Int)..]
-
-toDataset :: Group -> Color -> String
-toDataset g c =
+toDataset :: String -> Group -> Color -> String
+toDataset round g c =
   "{" ++ "label: '" ++ show (groupNumber (groupKey g)) ++ "'" ++
   "," ++ "borderColor: " ++ show c ++
   "," ++ "backgroundColor: " ++ show c ++
   "," ++ "fill: " ++ "false" ++
   "," ++ "data: [" ++ intercalate ","
                             (zipWith (\x y -> "{ x: '" ++ x ++ "' , y: '" ++ show y ++ "'}")
-                                     rounds
+                                     (roundListInf round)
                                      (tail (scanl (+) 0 (simplePoints g)))) ++
   "], " ++ 
   "lineTension: 0, " ++
   "yAxisID: 'y-axis-1'}"
 
 roundList :: String -> Int -> String
-roundList roundName n = 
-  intercalate "," (zipWith (\r i -> unwords ["'", r, show i, "'"]) (repeat roundName) [1 .. n])
+roundList roundName n = intercalate "," (map enclose (take n (roundListInf roundName))) where
+  enclose :: String -> String
+  enclose t = concat ["'", t, "'"]
+
+roundListInf :: String -> [String]
+roundListInf roundName = 
+  zipWith (\r i -> concat [r, " ", show i]) (repeat roundName) [1 ..]
 
 graphPage :: Labels -> Int -> [Group] -> [Color] -> String
 graphPage labels rounds groups colors =
@@ -215,7 +224,7 @@ graphPage labels rounds groups colors =
   "], \ 
   \    datasets:["
   ++
-  intercalate "," (zipWith toDataset groups colors)
+  intercalate "," (zipWith (toDataset (roundLabel labels)) groups colors)
   ++
   "]};\
   \window.onload = function() {\
@@ -263,6 +272,11 @@ readPoints [] = (0, [])
 readPoints text = (total, ps) where
   (total : _ : ps) = map read (words text)
 
+readColors :: IO [Color]
+readColors = fmap lines (readFile "colors.txt") `catch` handle where
+  handle :: IOException -> IO [Color]
+  handle _ = putStrLn "colors.txt not found - using default colors." >> return defaultColors
+
 parseCodesAndRounds :: String -> String -> ([String], [Round])
 parseCodesAndRounds _ [] = ([], [])
 parseCodesAndRounds roundName text = (codes, rounds) where
@@ -282,6 +296,7 @@ main :: IO ()
 main = do
   labels <- readLabels
   (codes, rounds) <- readCodesAndRounds (roundLabel labels)
+  colors <- readColors
   let groups = mkGroups rounds
       n = length rounds
   writePointPages labels groups
