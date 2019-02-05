@@ -84,7 +84,8 @@ data Labels = Labels {
   maxReachedLabel :: String,
   maxReachableLabel :: String,
   backToChartView :: String,
-  mainLabel :: String
+  mainLabel :: String,
+  ownPageLabel :: String
 } deriving (Show, Read)
 
 htmlSafeChar :: Char -> String
@@ -100,12 +101,14 @@ htmlSafeString = concatMap htmlSafeChar
 centerDiv :: String -> String
 centerDiv = tagged "div" . tagged "center"
 
+cssPath :: String
+cssPath = "<link rel='stylesheet' type='text/css' href='style.css'/>"
+
 pointPage :: Labels -> Color -> Points -> String
 pointPage labels color points =
   "<!DOCTYPE HTML PUBLIC \"-//IETF//DTD HTML//EN\">\n" ++
-  "<html><head><title>PubQuiz: Punktezahl</title>" ++
-  "<link rel='stylesheet' type='text/css' href='style.css'/>"++
-  "</head><body>"++
+  (tagged "html" . tagged "head") 
+    (tagged "title" (concat [mainLabel labels, ": ", ownPageLabel labels]) ++ cssPath) ++
   centerDiv (h1With coloured (mkSum points)) ++
   centerDiv (mkTable labels points) ++
   centerDiv (mkButton (backToChartView labels)) ++
@@ -208,17 +211,17 @@ roundListInf roundName =
 graphPage :: Labels -> Int -> [Group] -> [Color] -> String
 graphPage labels rounds groups colors =
   "<html>\
-  \<head><title>Pubquiz</title>\
-  \<script src='https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.3/Chart.bundle.min.js'></script>\
-  \<style>\
-  \canvas {\
-  \        -moz-user-select: none;\
-  \        -webkit-user-select: none;\
-  \        -ms-user-select: none;\
-  \}</style>\
-  \</head>\
+  \<head>"
+  ++
+  tagged "title" (mainLabel labels)
+  ++
+  "<script src='https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.3/Chart.bundle.min.js'></script>"
+  ++
+  cssPath
+  ++
+  "</head>\
   \<body>\
-  \<div style='width:75%;'>\
+  \<div>\
   \<canvas id='canvas'></canvas>\
   \</div>\
   \<script>\
@@ -265,7 +268,8 @@ defaultLabels = Labels {
   maxReachedLabel = htmlSafeString "Erreichte Höchstpunktzahl",
   maxReachableLabel = htmlSafeString "Erreichbare Punkte",
   backToChartView = htmlSafeString "Gesamtansicht",
-  mainLabel = htmlSafeString "Pubquiz"
+  mainLabel = htmlSafeString "Pubquiz",
+  ownPageLabel = htmlSafeString "Eigene Punkte"
 }
 
 readLabels :: IO Labels
