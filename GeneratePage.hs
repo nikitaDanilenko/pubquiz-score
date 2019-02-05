@@ -68,10 +68,10 @@ roundRating round = fromList ratings where
 mkGroups :: [Round] -> [Group]
 mkGroups = map (uncurry Group) . toList . unionsWith (++) . map roundRating
 
-writePointPages :: Labels -> [Group] -> IO ()
-writePointPages labels =
-  mapM_ (\group -> writeFile (code (groupKey group) ++ ".html")
-        (pointPage labels (points group)))
+writePointPages :: Labels -> [Group] -> [Color] -> IO ()
+writePointPages labels groups colors =
+  mapM_ (\(group, color) -> writeFile (code (groupKey group) ++ ".html")
+        (pointPage labels color (points group))) (zip groups colors)
 
 writeGraphPage :: Labels -> Int -> [Group] -> [String] -> IO ()
 writeGraphPage labels rounds groups colors =
@@ -98,21 +98,27 @@ htmlSafeString :: String -> String
 htmlSafeString = concatMap htmlSafeChar
 
 centerDiv :: String -> String
-centerDiv text = concat ["<div><center>", text, "</center></div>"]
+centerDiv = tagged "div" . tagged "center"
 
-pointPage :: Labels -> Points -> String
-pointPage labels points =
+pointPage :: Labels -> Color -> Points -> String
+pointPage labels color points =
   "<!DOCTYPE HTML PUBLIC \"-//IETF//DTD HTML//EN\">\n" ++
   "<html><head><title>PubQuiz: Punktezahl</title>" ++
   "<link rel='stylesheet' type='text/css' href='style.css'/>"++
   "</head><body>"++
-  centerDiv (h1 (mkSum points)) ++
+  centerDiv (h1With coloured (mkSum points)) ++
   centerDiv (mkTable labels points) ++
   centerDiv (mkButton (backToChartView labels)) ++
-  "</body></html>"
+  "</body></html>" where
+    coloured = "style=\"color:" ++ color ++ "\""
 
 h1 :: String -> String
 h1 = tagged "h1"
+
+h1With :: String -> String -> String
+h1With attrs text = concat [openWith, text, close] where
+  (_, close) = tag "h1"
+  openWith = concat ["<h1 ", attrs, ">"]
 
 tableCell :: String -> String
 tableCell = tagged "td"
@@ -299,5 +305,5 @@ main = do
   colors <- readColors
   let groups = mkGroups rounds
       n = length rounds
-  writePointPages labels groups
+  writePointPages labels groups colors
   writeGraphPage labels n groups colors
