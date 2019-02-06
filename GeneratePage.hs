@@ -79,7 +79,8 @@ writeGraphPage labels rounds groups colors =
             (graphPage labels rounds groups colors)
 
 data Labels = Labels { 
-  roundLabel :: String, 
+  roundLabel :: String,
+  groupLabel :: String,
   ownPointsLabel :: String, 
   maxReachedLabel :: String,
   maxReachableLabel :: String,
@@ -185,9 +186,9 @@ defaultColors = cycle [
   , "rgb(142, 64, 255)"
   ]
 
-toDataset :: String -> Group -> Color -> String
-toDataset round g c =
-  "{" ++ "label: '" ++ show (groupNumber (groupKey g)) ++ "'" ++
+toDataset :: String -> String -> Group -> Color -> String
+toDataset round group g c =
+  "{" ++ "label: '" ++ unwords [group, show (groupNumber (groupKey g))] ++ "'" ++
   "," ++ "borderColor: " ++ show c ++
   "," ++ "backgroundColor: " ++ show c ++
   "," ++ "fill: " ++ "false" ++
@@ -195,9 +196,7 @@ toDataset round g c =
                             (zipWith (\x y -> "{ x: '" ++ x ++ "' , y: '" ++ show y ++ "'}")
                                      (roundListInf round)
                                      (tail (scanl (+) 0 (simplePoints g)))) ++
-  "], " ++ 
-  "lineTension: 0, " ++
-  "yAxisID: 'y-axis-1'}"
+  "]}"
 
 roundList :: String -> Int -> String
 roundList roundName n = intercalate "," (map enclose (take n (roundListInf roundName))) where
@@ -233,12 +232,13 @@ graphPage labels rounds groups colors =
   "], \ 
   \    datasets:["
   ++
-  intercalate "," (zipWith (toDataset (roundLabel labels)) groups colors)
+  intercalate "," (zipWith (toDataset (roundLabel labels) (groupLabel labels)) groups colors)
   ++
   "]};\
   \window.onload = function() {\
   \  var ctx = document.getElementById('canvas').getContext('2d');\
-  \  window.myLine = Chart.Line(ctx, {\
+  \  window.myLine = new Chart(ctx, {\
+  \   type: 'bar', \
   \   data: lineChartData,\
   \   options: {\
   \   responsive: true,\
@@ -263,7 +263,8 @@ graphPage labels rounds groups colors =
 
 defaultLabels :: Labels
 defaultLabels = Labels { 
-  roundLabel = htmlSafeString "Runde", 
+  roundLabel = htmlSafeString "Runde",
+  groupLabel = htmlSafeString "Gruppe",
   ownPointsLabel = htmlSafeString "Erreichte Punkte", 
   maxReachedLabel = htmlSafeString "Erreichte Höchstpunktzahl",
   maxReachableLabel = htmlSafeString "Erreichbare Punkte",
