@@ -1,0 +1,1 @@
+ghc --make -o pubquizScore GeneratePage.hs -O2
