@@ -26,12 +26,13 @@ You can run the program without any parameters, but three parameters are implici
    The structure of the file is as follows:
 
         code1 ... codeN
-        1 : p11 ... p1G
+        R1 : p11 ... p1G
         ...
-        L : pL1 ... pLG
+        RK : pL1 ... pLG
    
    The codes are arbitrary alphanumerical sequences that should be pairwise different.
-   The round ratings are written as the round number followed by any separator symbol (e.g. ":")
+   The round ratings are written as the maximum point value in the round
+   followed by any separator symbol (e.g. ":")
    and then all the points of a round.
 
 After updating one of the files (usually `rounds.txt`) 
