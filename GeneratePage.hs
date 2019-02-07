@@ -17,7 +17,7 @@ type Points = [RoundRating]
 
 score :: Points -> (Double, Double)
 score points = 
-  foldr (\rating (o, r) -> ((ownPoints &&& reachablePoints) >>> ((+) *** (+)) >>> (($ o) *** ($ r))) rating) (0, 0) points
+  foldr (\rating (o, r) -> ((ownPoints &&& reachablePoints) >>> ((+ o) *** (+ r))) rating) (0, 0) points
 
 mkSum :: Points -> String
 mkSum = score >>> uncurry (\own reachable -> concat [prettyDouble own, "/", prettyDouble reachable])
