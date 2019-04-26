@@ -7,7 +7,7 @@ The program uses standard Haskell without additional libraries and can be compil
 There are scripts provided for Linux (`install.sh`) and Windows (`install.bat`), 
 both of which create an executable called "pubquizScore" in the project directory.
 
-# Usage
+# Usage without parameters
 
 You can run the program without any parameters, but three parameters are implicit:
 
@@ -38,3 +38,14 @@ You can run the program without any parameters, but three parameters are implici
 After updating one of the files (usually `rounds.txt`) 
 all pages are regenerated according to the new settings.
 
+# Usage with parameters
+
+Alternatively, you can run the program with the following parameters
+
+  * `labels=<yourLabels>`: The location of the labels file. If none is given, default labels are used.
+  * `colors=<yourColors>`: The location of the colors file. If none is given, default labels are used.
+  * `rounds=<yourRounds>`: The location of the rounds file. If none is given, no output is produced.
+  * `prefix=<targetDir>`: The prefix (directory) where to put the result files. 
+                          If no folder is given, '.' is used instead.
+                          Make sure the folder exists, because the program does not create it 
+                          (since the prefix may not be just a folder, but a common prefix as well).
