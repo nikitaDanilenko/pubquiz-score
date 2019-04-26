@@ -3,8 +3,12 @@ import Control.Exception      ( catch )
 import Control.Exception.Base ( IOException )
 import Data.Function          ( on )
 import Data.List              ( intercalate, maximumBy )
-import Data.Map               ( Map, fromList, unionsWith, toList )
+import Data.Map               ( Map, fromList, unionsWith, toList, lookup )
+import Data.Maybe             ( fromMaybe )
 import Data.Ord               ( comparing )
+import System.Environment     ( getArgs )
+
+import Prelude hiding         ( lookup )
 
 data RoundRating = RoundRating { 
   roundNumber :: Int, 
@@ -68,14 +72,14 @@ roundRating round = fromList ratings where
 mkGroups :: [Round] -> [Group]
 mkGroups = map (uncurry Group) . toList . unionsWith (++) . map roundRating
 
-writePointPages :: Labels -> [Group] -> [Color] -> IO ()
-writePointPages labels groups colors =
-  mapM_ (\(group, color) -> writeFile (code (groupKey group) ++ ".html")
+writePointPages :: String -> Labels -> [Group] -> [Color] -> IO ()
+writePointPages prefix labels groups colors =
+  mapM_ (\(group, color) -> writeFile (prefix ++ code (groupKey group) ++ ".html")
         (pointPage labels color (points group))) (zip groups colors)
 
-writeGraphPage :: Labels -> Int -> [Group] -> [String] -> IO ()
-writeGraphPage labels rounds groups colors =
-  writeFile "index.html"
+writeGraphPage :: String -> Labels -> Int -> [Group] -> [String] -> IO ()
+writeGraphPage prefix labels rounds groups colors =
+  writeFile (prefix ++ "index.html")
             (graphPage labels rounds groups colors)
 
 data Labels = Labels { 
@@ -273,20 +277,20 @@ defaultLabels = Labels {
   ownPageLabel = htmlSafeString "Eigene Punkte"
 }
 
-readLabels :: IO Labels
-readLabels = fmap (read :: String -> Labels) (readFile "./labels.txt") `catch` handle where
+readLabels :: String -> IO Labels
+readLabels labelsPath = fmap (read :: String -> Labels) (readFile labelsPath) `catch` handle where
   handle :: IOException -> IO Labels
-  handle _ = putStrLn "labels.txt not found - using default labels." >> return defaultLabels
+  handle _ = putStrLn (labelsPath ++ " not found - using default labels.") >> return defaultLabels
 
 readPoints :: String -> (Double, [Double])
 readPoints [] = (0, [])
 readPoints text = (total, ps) where
   (total : _ : ps) = map read (words text)
 
-readColors :: IO [Color]
-readColors = fmap lines (readFile "colors.txt") `catch` handle where
+readColors :: String -> IO [Color]
+readColors colorsPath = fmap lines (readFile colorsPath) `catch` handle where
   handle :: IOException -> IO [Color]
-  handle _ = putStrLn "colors.txt not found - using default colors." >> return defaultColors
+  handle _ = putStrLn (colorsPath ++ " not found - using default colors.") >> return defaultColors
 
 parseCodesAndRounds :: String -> String -> ([String], [Round])
 parseCodesAndRounds _ [] = ([], [])
@@ -297,18 +301,28 @@ parseCodesAndRounds roundName text = (codes, rounds) where
   indexedPoints = zip [1 ..] points
   rounds = map (\(i, (total, ps)) -> fromIndex codes roundName i total ps) indexedPoints
 
-readCodesAndRounds :: String -> IO ([String], [Round])
-readCodesAndRounds roundLabel =
-  fmap (parseCodesAndRounds roundLabel) (readFile "rounds.txt") `catch` handle where
+readCodesAndRounds :: String -> String -> IO ([String], [Round])
+readCodesAndRounds roundsPath roundLabel =
+  fmap (parseCodesAndRounds roundLabel) (readFile roundsPath) `catch` handle where
     handle :: IOException -> IO ([String], [Round]) 
     handle _ = putStrLn "Unexpected format or missing file. No output generated." >> return ([], [])
 
+splitOnSetter :: String -> (String, String)
+splitOnSetter str = (key, drop 1 preValue) where
+  (key, preValue) = span ((/=) '=') str
+
 main :: IO ()
 main = do
-  labels <- readLabels
-  (codes, rounds) <- readCodesAndRounds (roundLabel labels)
-  colors <- readColors
+  args <- getArgs
+  let kvs = fromList (map splitOnSetter args)
+      labelsPath = fromMaybe "labels.txt" (lookup "labels" kvs)
+      colorsPath = fromMaybe "colors.txt" (lookup "colors" kvs)
+      roundsPath = fromMaybe "rounds.txt" (lookup "rounds" kvs)
+      prefix     = fromMaybe "./"         (lookup "prefix" kvs)
+  labels <- readLabels labelsPath
+  (codes, rounds) <- readCodesAndRounds roundsPath (roundLabel labels)
+  colors <- readColors colorsPath
   let groups = mkGroups rounds
       n = length rounds
-  writePointPages labels groups colors
-  writeGraphPage labels n groups colors
+  writePointPages prefix labels groups colors
+  writeGraphPage prefix labels n groups colors
