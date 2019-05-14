@@ -260,7 +260,7 @@ graphPage labels rounds groups colors =
   \ scales: {\
   \ yAxes: [\
   \   { type: 'linear', display: true, position: 'left', id: 'y-axis-1',\
-  \     tick: { min: '0', max: '50'} } ]\
+  \     ticks: { beginAtZero : true } } ]\
   \ }}});};</script>\
   \ <div id = 'copyright'>Powered by <a href='https://www.chartjs.org'>Chart.js</a></div>\
   \</body></html>"
@@ -305,7 +305,9 @@ readCodesAndRounds :: String -> String -> IO ([String], [Round])
 readCodesAndRounds roundsPath roundLabel =
   fmap (parseCodesAndRounds roundLabel) (readFile roundsPath) `catch` handle where
     handle :: IOException -> IO ([String], [Round]) 
-    handle _ = putStrLn "Unexpected format or missing file. No output generated." >> return ([], [])
+    handle e = putStrLn (show e) >> 
+               putStrLn "Unexpected format or missing file. No output generated." >> 
+               return ([], [])
 
 splitOnSetter :: String -> (String, String)
 splitOnSetter str = (key, drop 1 preValue) where
